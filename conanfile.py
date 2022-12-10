@@ -12,7 +12,7 @@ class PackageConan(ConanFile):
     topics = ('sample', 'core', 'basic-types')
     generators = 'cmake'
     requires = (
-      'mf_mtime_core/auto@momenta/stable',
+        'mb_mpu_sdk/auto@momenta/stable'
     )
     #def imports(self):
     #    self.copy('*.so*',  dst='deploy/common/lib',    src='lib')

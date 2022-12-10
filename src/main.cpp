@@ -11,7 +11,7 @@
  * Author           : denny.zhang <denny.zhang@momenta.ai>
  * Description      :
  *****************************************************************************/
-#include "status_monitor.h"
+#include "time_provider.h"
 #include <chrono>
 #include <ctime>
 #include <fstream>
@@ -22,91 +22,25 @@
 #include <vector>
 
 using namespace std;
-using namespace CameraService;
-
-char *randstr(char *str, const int len) {
-  srand(time(NULL));
-  int i;
-  for (i = 0; i < len; ++i) {
-    switch ((rand() % 3)) {
-    case 1:
-      str[i] = 'A' + rand() % 26;
-      break;
-    case 2:
-      str[i] = 'a' + rand() % 26;
-      break;
-    default:
-      str[i] = '0' + rand() % 10;
-      break;
-    }
-  }
-  str[++i] = '\0';
-  return str;
-}
-
-void std_reporter(
-    const std::vector<StatusMonitorAbstract::StatusMonitorReport> &reports) {
-  std::vector<StatusMonitorAbstract::StatusMonitorReport>::const_iterator iter =
-      reports.begin();
-  while (iter != reports.end()) {
-    char precision_s[20] = {0};
-    if (iter->report_type ==
-        StatusMonitorAbstract::StatusMonitorReport::HEART_BEAT) {
-      snprintf(precision_s, 19, "%.2f", iter->fps);
-      printf("report pipeline %s, fps = %s, frame_loss = %s, sync = %s, delay "
-             "= %lu, online = %s\n",
-             iter->pipeline_name.c_str(), precision_s, iter->frame_loss.c_str(),
-             iter->sync == true ? "true" : "false", iter->delay_us,
-             iter->online == true ? "true" : "false");
-    } else if (iter->report_type ==
-               StatusMonitorAbstract::StatusMonitorReport::WARNING) {
-      printf("report pipeline %s warning[%d]\n", iter->pipeline_name.c_str(),
-             iter->warning);
-    }
-    iter++;
-  }
-  return;
-};
 
 int main(int argc, char *argv[]) {
-  StatusMonitor::getInstance();
-  StatusMonitor::getInstance().run_forever();
+  uint64_t s = 0, ns = 0;
 
-  StatusMonitorAbstract::PipelineInformation meta;
-  meta.fps = 10;
-  meta.pipeline_name = "front_far";
-  StatusMonitor::getInstance().pipeline_registration(meta);
-  meta.pipeline_name = "front_wide";
-  StatusMonitor::getInstance().pipeline_registration(meta);
-  meta.pipeline_name = "front_fisheye";
-  StatusMonitor::getInstance().pipeline_registration(meta);
-  StatusMonitor::getInstance().set_reporter_callback(&std_reporter);
-  sleep(2);
-
-  StatusMonitorAbstract::StatusMonitorFrame signal;
-  uint32_t count = 0;
-  while (count <= 1000000) {
-    usleep(90000 + rand() % 10000);
-    auto micros =
-        std::chrono::duration_cast<std::chrono::microseconds>(
-            std::chrono::high_resolution_clock::now().time_since_epoch())
-            .count();
-    signal.pipeline_name = "front_wide";
-    signal.sensor_timestamp_us = (uint64_t)micros;
-    signal.receive_timestamp_us = (uint64_t)micros + (rand() % 800);
-    StatusMonitor::getInstance().signal(signal);
-    if (0 == count % 2) {
-      signal.pipeline_name = "front_far";
-      StatusMonitor::getInstance().signal(signal);
-    }
-    if (0 == count % 3) {
-      signal.pipeline_name = "front_fisheye";
-      StatusMonitor::getInstance().signal(signal);
-    }
-    count++;
+  auto start = std::chrono::system_clock::now();
+  TIME_RESULT ret = GetTime(s, ns);
+  auto end = std::chrono::system_clock::now();
+  auto duration = end - start;
+  double time_cost = static_cast<double>(duration.count())/1000.0;
+  if (ret != TIME_RESULT::K_RET_OK) {
+    (void)fprintf(stderr, "[Sample] Get time error, error code is %d.\n",
+                  static_cast<int>(ret));
   }
 
-  StatusMonitor::getInstance().stop();
+  uint64_t during{s * 1000000000 + ns};
+
+  std::cout << "Sample: get GTS: " << during << ", s: " << s << " ns: " << ns
+            << " API exec cost: " << time_cost << "us" << std::endl;
+
 
   return 0;
 }

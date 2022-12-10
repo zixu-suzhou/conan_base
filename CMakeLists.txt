@@ -33,11 +33,19 @@ endfunction()
 
 include_directories(./include)
 
-add_executable ( ${PROJECT_NAME} src/main.cpp src/status_monitor.cpp)
+add_executable ( ${PROJECT_NAME}
+  src/main.cpp
+  )
 target_link_libraries (
   ${PROJECT_NAME}
+  ${CONAN_LIBS_MB_MPU_SDK}
   pthread
   )
+target_include_directories(${PROJECT_NAME} PRIVATE
+  ${CONAN_INCLUDE_DIRS_MB_MPU_SDK}
+  )
+
+
 install(
   TARGETS ${PROJECT_NAME}
   RUNTIME DESTINATION bin
