@@ -11,9 +11,7 @@ class PackageConan(ConanFile):
     license = 'Momenta Limited, Inc'
     topics = ('sample', 'core', 'basic-types')
     generators = 'cmake'
-    requires = (
-        'mb_mpu_sdk/auto@momenta/stable'
-    )
+    requires = ()
     #def imports(self):
     #    self.copy('*.so*',  dst='deploy/common/lib',    src='lib')
 

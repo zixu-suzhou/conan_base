@@ -1,46 +1,91 @@
-/*****************************************************************************
- * Copyright (C) 2022 Momenta Technology Co., Ltd. All rights reserved.
- *
- * No.58 Qinglonggang Rd, Suzhou, Jiangsu, PR China, contact@momenta.ai
- *
- * https://www.momenta.cn/
- *
- * Filename         : main.cpp
- * Created          : 2022-09-03 12:23
- * Last modified    : 2022-09-03 12:24
- * Author           : denny.zhang <denny.zhang@momenta.ai>
- * Description      :
- *****************************************************************************/
-#include "time_provider.h"
 #include <chrono>
-#include <ctime>
-#include <fstream>
 #include <iostream>
-#include <stdlib.h>
-#include <time.h>
-#include <unistd.h>
+#include <thread>
 #include <vector>
 
-using namespace std;
+#include "mbox_time.hpp"
 
-int main(int argc, char *argv[]) {
-  uint64_t s = 0, ns = 0;
+constexpr int loops = 1'000;
 
-  auto start = std::chrono::system_clock::now();
-  TIME_RESULT ret = GetTime(s, ns);
-  auto end = std::chrono::system_clock::now();
-  auto duration = end - start;
-  double time_cost = static_cast<double>(duration.count())/1000.0;
-  if (ret != TIME_RESULT::K_RET_OK) {
-    (void)fprintf(stderr, "[Sample] Get time error, error code is %d.\n",
-                  static_cast<int>(ret));
+int main() {
+  std::thread t1([] {
+    std::vector<std::chrono::nanoseconds> times;
+
+    for (int i = 0; i < loops; i++) {
+      std::chrono::nanoseconds time = mbox_data_time();
+      std::cout << time.count() << std::endl;
+      times.push_back(time);
+    }
+  });
+  std::thread t2([] {
+    std::vector<std::chrono::nanoseconds> times;
+
+    for (int i = 0; i < loops; i++) {
+      std::chrono::nanoseconds time = mbox_data_time();
+      std::cout << time.count() << std::endl;
+      times.push_back(time);
+    }
+  });
+  std::thread t3([] {
+    std::vector<std::chrono::nanoseconds> times;
+
+    for (int i = 0; i < loops; i++) {
+      std::chrono::nanoseconds time = mbox_UTC();
+      std::cout << time.count() << std::endl;
+      times.push_back(time);
+    }
+  });
+  std::thread t4([] {
+    std::vector<std::chrono::nanoseconds> times;
+
+    for (int i = 0; i < loops; i++) {
+      std::chrono::nanoseconds time = mbox_UTC();
+      std::cout << time.count() << std::endl;
+      times.push_back(time);
+    }
+  });
+
+  t1.join();
+  t2.join();
+  t3.join();
+  t4.join();
+
+  if (true) {
+    std::chrono::nanoseconds t1, t2, t3, t4, t5;
+    t1 = mbox_UTC();
+    for (int i = 0; i < loops; i++) {
+      t2 = mbox_UTC();
+    }
+    t3 = mbox_UTC();
+    for (int i = 0; i < loops; i++) {
+      t4 = mbox_data_time();
+    }
+    t5 = mbox_UTC();
+
+    std::cout << t1.count() << std::endl
+              << t2.count() << std::endl
+              << t3.count() << std::endl
+              << t4.count() << std::endl
+              << t5.count() << std::endl;
+
+    std::cout << (t3 - t1).count() << std::endl
+              << (t5 - t3).count() << std::endl;
   }
 
-  uint64_t during{s * 1000000000 + ns};
+  for (;;) {
+    std::this_thread::sleep_for(std::chrono::seconds(1));
 
-  std::cout << "Sample: get GTS: " << during << ", s: " << s << " ns: " << ns
-            << " API exec cost: " << time_cost << "us" << std::endl;
+    auto t1 = std::chrono::nanoseconds(
+        std::chrono::steady_clock::now().time_since_epoch());
+    auto data_time = mbox_data_time();
+    auto t2 = std::chrono::nanoseconds(
+        std::chrono::steady_clock::now().time_since_epoch());
+    auto system_time = mbox_data_time();
+    auto t3 = std::chrono::nanoseconds(
+        std::chrono::steady_clock::now().time_since_epoch());
 
-
+    std::cout << "data_time: " << data_time.count() << "ns in " << (t2 - t1).count() << "ns\n";
+    std::cout << "system_time: " << system_time.count() << "ns in " << (t3 - t2).count() << "ns\n";
+  }
   return 0;
 }
